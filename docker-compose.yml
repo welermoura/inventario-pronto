@@ -1,9 +1,9 @@
 services:
   db:
     image: postgres:15-alpine
-    container_name: inventory_db
+    container_name: inventory_db_v2
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_v2:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -14,12 +14,12 @@ services:
 
   backend:
     build: ./backend
-    container_name: inventory_backend
+    container_name: inventory_backend_v2
     volumes:
       - ./backend:/app/backend
-      - uploads_data:/app/uploads
+      - uploads_data_v2:/app/uploads
     ports:
-      - "8001:8000"
+      - "8002:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - SECRET_KEY=${SECRET_KEY}
@@ -35,18 +35,18 @@ services:
       context: ./frontend
       # Pass VITE_API_URL as a build arg if needed, OR relies on runtime injection
       # Since we are using a dev/runtime approach with start_lan.sh, we pass it as ENV
-    container_name: inventory_frontend
+    container_name: inventory_frontend_v2
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "5173:5173"
+      - "5174:5173"
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8001}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8002}
     depends_on:
       - backend
     restart: unless-stopped
 
 volumes:
-  postgres_data:
-  uploads_data:
+  postgres_data_v2:
+  uploads_data_v2:
