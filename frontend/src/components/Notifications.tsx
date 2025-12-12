@@ -1,25 +1,14 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../AuthContext';
+import { getWebSocketUrl } from '../utils/websocket';
 
 const Notifications: React.FC = () => {
-    const { user } = useAuth();
+    const { user, token } = useAuth();
 
     useEffect(() => {
-        if (!user) return;
+        if (!user || !token) return;
 
-        let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
-
-        // Smart URL Detection for LAN
-        if (typeof window !== 'undefined') {
-            const hostname = window.location.hostname;
-            if (hostname !== 'localhost' && hostname !== '127.0.0.1' && apiUrl.includes('localhost')) {
-                const protocol = window.location.protocol;
-                apiUrl = `${protocol}//${hostname}:8001`;
-                console.log('[WS] Detected LAN access, overriding localhost WS URL');
-            }
-        }
-
-        const wsUrl = apiUrl.replace(/^http/, 'ws') + '/ws/notifications';
+        const wsUrl = getWebSocketUrl(token);
         const socket = new WebSocket(wsUrl);
 
         socket.onopen = () => {
@@ -44,7 +33,7 @@ const Notifications: React.FC = () => {
         return () => {
             socket.close();
         };
-    }, [user]);
+    }, [user, token]);
 
     return null; // Componente sem UI, apenas lógica
 };
