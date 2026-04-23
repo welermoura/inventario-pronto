@@ -125,3 +125,13 @@ class Log(Base):
 
     item = relationship("Item", back_populates="logs", lazy="selectin")
     user = relationship("User", back_populates="logs", lazy="selectin")
+
+class Branding(Base):
+    __tablename__ = "branding"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    app_name = Column(String, default="Inventário")
+    logo_url = Column(Text, nullable=True)
+    primary_color = Column(String, default="#2563eb")
+    primary_color_hover = Column(String, default="#1d4ed8")

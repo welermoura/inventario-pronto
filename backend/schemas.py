@@ -206,3 +206,19 @@ class ItemResponse(ItemBase):
         final_value = max(0.0, self.invoice_value * remaining_ratio)
 
         return round(final_value, 2)
+
+# Branding
+class BrandingBase(BaseModel):
+    app_name: Optional[str] = "Inventário"
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = "#2563eb"
+    primary_color_hover: Optional[str] = None
+
+class BrandingUpdate(BrandingBase):
+    pass
+
+class BrandingResponse(BrandingBase):
+    id: int
+
+    class Config:
+        from_attributes = True

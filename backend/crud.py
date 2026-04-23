@@ -463,3 +463,30 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
         db_item = result.scalars().first()
 
     return db_item
+
+# Branding
+async def get_branding(db: AsyncSession):
+    result = await db.execute(select(models.Branding).where(models.Branding.id == 1))
+    db_branding = result.scalars().first()
+    if not db_branding:
+        # Create default branding if not exists
+        db_branding = models.Branding(id=1)
+        db.add(db_branding)
+        await db.commit()
+        await db.refresh(db_branding)
+    return db_branding
+
+async def update_branding(db: AsyncSession, branding: schemas.BrandingUpdate):
+    db_branding = await get_branding(db)
+    if branding.app_name is not None:
+        db_branding.app_name = branding.app_name
+    if branding.logo_url is not None:
+        db_branding.logo_url = branding.logo_url
+    if branding.primary_color is not None:
+        db_branding.primary_color = branding.primary_color
+    if branding.primary_color_hover is not None:
+        db_branding.primary_color_hover = branding.primary_color_hover
+    
+    await db.commit()
+    await db.refresh(db_branding)
+    return db_branding

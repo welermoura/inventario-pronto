@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useBranding } from '../BrandingContext';
-import { Palette, Type, ImagePlus, RotateCcw, Check, Upload, X, Package } from 'lucide-react';
+import { Palette, Type, ImagePlus, RotateCcw, Check, Upload, X, Package, Save } from 'lucide-react';
 
 const PRESET_COLORS = [
     { name: 'Azul', value: '#2563eb' },
@@ -18,26 +18,44 @@ const PRESET_COLORS = [
 ];
 
 const BrandingSettings: React.FC = () => {
-    const { branding, updateBranding, resetBranding } = useBranding();
+    const { branding, updateBranding, resetBranding, isLoading } = useBranding();
+    
+    // Local state for "draft" changes
     const [appName, setAppName] = useState(branding.appName);
+    const [logoUrl, setLogoUrl] = useState(branding.logoUrl);
+    const [primaryColor, setPrimaryColor] = useState(branding.primaryColor);
+    
+    const [isSaving, setIsSaving] = useState(false);
     const [savedIndicator, setSavedIndicator] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Sync draft when global branding loads/changes (e.g. from server)
+    useEffect(() => {
+        setAppName(branding.appName);
+        setLogoUrl(branding.logoUrl);
+        setPrimaryColor(branding.primaryColor);
+    }, [branding]);
+
     const showSaved = () => {
         setSavedIndicator(true);
-        setTimeout(() => setSavedIndicator(false), 2000);
+        setTimeout(() => setSavedIndicator(false), 3000);
     };
 
-    const handleNameSave = () => {
-        if (appName.trim()) {
-            updateBranding({ appName: appName.trim() });
+    const handleSaveAll = async () => {
+        setIsSaving(true);
+        try {
+            await updateBranding({
+                appName: appName.trim() || 'Inventário',
+                logoUrl: logoUrl,
+                primaryColor: primaryColor
+            });
             showSaved();
+        } catch (error) {
+            console.error('Erro ao salvar:', error);
+            alert('Falha ao salvar configurações. Verifique se você tem permissão de administrador.');
+        } finally {
+            setIsSaving(false);
         }
-    };
-
-    const handleColorSelect = (color: string) => {
-        updateBranding({ primaryColor: color });
-        showSaved();
     };
 
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,37 +63,46 @@ const BrandingSettings: React.FC = () => {
         if (!file) return;
         const reader = new FileReader();
         reader.onloadend = () => {
-            updateBranding({ logoUrl: reader.result as string });
-            showSaved();
+            setLogoUrl(reader.result as string);
         };
         reader.readAsDataURL(file);
     };
 
     const handleRemoveLogo = () => {
-        updateBranding({ logoUrl: null });
+        setLogoUrl(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const handleReset = () => {
+    const handleReset = async () => {
         if (window.confirm('Resetar todas as personalizações para o padrão?')) {
-            resetBranding();
-            setAppName('Inventário');
-            if (fileInputRef.current) fileInputRef.current.value = '';
+            await resetBranding();
         }
     };
 
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
+
+    const hasChanges = appName !== branding.appName || 
+                      logoUrl !== branding.logoUrl || 
+                      primaryColor !== branding.primaryColor;
+
     return (
-        <div className="max-w-2xl mx-auto space-y-8 animate-fade-in p-1">
+        <div className="max-w-2xl mx-auto space-y-8 animate-fade-in p-1 pb-24">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white">Personalização</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Customize a aparência da aplicação</p>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">Customize a aparência da aplicação globalmente</p>
                 </div>
                 {savedIndicator && (
-                    <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-medium transition-all animate-pulse">
+                    <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-medium transition-all animate-in fade-in slide-in-from-top-2">
                         <Check size={16} />
-                        Salvo!
+                        Alterações salvas!
                     </div>
                 )}
             </div>
@@ -91,24 +118,14 @@ const BrandingSettings: React.FC = () => {
                         <p className="text-sm text-slate-500">Aparece no menu lateral e na aba do navegador</p>
                     </div>
                 </div>
-                <div className="flex gap-3">
-                    <input
-                        type="text"
-                        value={appName}
-                        onChange={(e) => setAppName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleNameSave()}
-                        maxLength={30}
-                        placeholder="Nome do sistema..."
-                        className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                    <button
-                        onClick={handleNameSave}
-                        style={{ backgroundColor: branding.primaryColor }}
-                        className="px-5 py-2.5 rounded-xl text-white text-sm font-medium hover:opacity-90 transition-opacity"
-                    >
-                        Salvar
-                    </button>
-                </div>
+                <input
+                    type="text"
+                    value={appName}
+                    onChange={(e) => setAppName(e.target.value)}
+                    maxLength={30}
+                    placeholder="Nome do sistema..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
             </div>
 
             {/* Logo */}
@@ -124,12 +141,11 @@ const BrandingSettings: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-5">
-                    {/* Preview — no fixed box, natural proportions */}
                     <div className="min-w-[48px] min-h-[48px] flex items-center justify-center shrink-0">
-                        {branding.logoUrl ? (
+                        {logoUrl ? (
                             <img
-                                src={branding.logoUrl}
-                                alt="Logo"
+                                src={logoUrl}
+                                alt="Logo Preview"
                                 style={{ maxHeight: '64px', maxWidth: '128px', width: 'auto', height: 'auto' }}
                                 className="object-contain drop-shadow-sm"
                             />
@@ -148,7 +164,7 @@ const BrandingSettings: React.FC = () => {
                             <Upload size={16} />
                             Fazer upload
                         </button>
-                        {branding.logoUrl && (
+                        {logoUrl && (
                             <button
                                 onClick={handleRemoveLogo}
                                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-100 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
@@ -185,11 +201,11 @@ const BrandingSettings: React.FC = () => {
                         <button
                             key={c.value}
                             title={c.name}
-                            onClick={() => handleColorSelect(c.value)}
+                            onClick={() => setPrimaryColor(c.value)}
                             className="relative w-full aspect-square rounded-xl transition-transform hover:scale-110 active:scale-95"
                             style={{ backgroundColor: c.value }}
                         >
-                            {branding.primaryColor === c.value && (
+                            {primaryColor === c.value && (
                                 <span className="absolute inset-0 flex items-center justify-center">
                                     <Check size={18} className="text-white drop-shadow-md" />
                                 </span>
@@ -198,31 +214,30 @@ const BrandingSettings: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Custom color picker */}
                 <div className="mt-5 flex items-center gap-3">
                     <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Cor personalizada:</label>
                     <div className="relative">
                         <input
                             type="color"
-                            value={branding.primaryColor}
-                            onChange={(e) => handleColorSelect(e.target.value)}
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
                             className="w-10 h-10 rounded-lg cursor-pointer border border-slate-200 dark:border-slate-600 bg-transparent"
                         />
                     </div>
-                    <span className="text-sm text-slate-500 font-mono">{branding.primaryColor}</span>
+                    <span className="text-sm text-slate-500 font-mono">{primaryColor}</span>
                 </div>
             </div>
 
             {/* Preview Badge */}
             <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6">
-                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Pré-visualização do sidebar</h2>
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Pré-visualização (Rascunho)</h2>
                 <div
-                    className="flex items-center gap-3 p-4 rounded-xl w-fit shadow-md"
-                    style={{ backgroundColor: branding.primaryColor }}
+                    className="flex items-center gap-3 p-4 rounded-xl w-fit shadow-md transition-colors duration-500"
+                    style={{ backgroundColor: primaryColor }}
                 >
-                    {branding.logoUrl ? (
+                    {logoUrl ? (
                         <img
-                            src={branding.logoUrl}
+                            src={logoUrl}
                             alt="Logo"
                             style={{ maxHeight: '36px', maxWidth: '90px', width: 'auto', height: 'auto' }}
                             className="object-contain drop-shadow-sm"
@@ -231,19 +246,33 @@ const BrandingSettings: React.FC = () => {
                         <Package size={24} className="text-white shrink-0" />
                     )}
                     <span className="font-bold text-lg text-white">
-                        {branding.appName}
+                        {appName || branding.appName}
                     </span>
                 </div>
+                <p className="text-xs text-slate-400 mt-3">* Esta é uma prévia das alterações não salvas.</p>
             </div>
 
-            {/* Reset */}
-            <div className="flex justify-end">
+            {/* Save Floating Bar */}
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 z-50 animate-in slide-in-from-bottom-4">
                 <button
                     onClick={handleReset}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-slate-500 hover:text-red-500 hover:bg-red-50 border border-slate-200 transition-all"
                 >
                     <RotateCcw size={16} />
-                    Restaurar padrões
+                    Resetar
+                </button>
+                <button
+                    onClick={handleSaveAll}
+                    disabled={!hasChanges || isSaving}
+                    style={{ backgroundColor: hasChanges ? primaryColor : '#94a3b8' }}
+                    className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-white text-sm font-bold shadow-lg shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100`}
+                >
+                    {isSaving ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                        <Save size={18} />
+                    )}
+                    {isSaving ? 'Salvando...' : 'Salvar Todas as Alterações'}
                 </button>
             </div>
         </div>

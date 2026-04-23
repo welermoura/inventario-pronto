@@ -30,5 +30,9 @@ async def init_db():
                 await crud.create_user(db, admin_data)
                 logger.info("Default admin created: admin / 123")
 
+            # Initialize Branding if not exists
+            await crud.get_branding(db)
+            logger.info("Branding initialized.")
+
         except Exception as e:
             logger.error(f"Error during initial data seeding: {e}")
