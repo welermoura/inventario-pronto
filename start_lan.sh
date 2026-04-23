@@ -28,8 +28,17 @@ fi
 echo "Detected LAN IP: $HOST_IP"
 
 # Create/Update .env file logic
+# Ensure we have a BACKEND_PORT, read from .env if it exists
+BACKEND_PORT=8002
+if [ -f .env ]; then
+    ENV_PORT=$(grep -E '^BACKEND_PORT=' .env | cut -d '=' -f2)
+    if [ ! -z "$ENV_PORT" ]; then
+        BACKEND_PORT=$ENV_PORT
+    fi
+fi
+
 # We export vars so docker-compose picks them up overriding .env file if needed for THIS session
-export VITE_API_URL="http://$HOST_IP:8002"
+export VITE_API_URL="http://$HOST_IP:$BACKEND_PORT"
 
 echo "Setting VITE_API_URL to $VITE_API_URL"
 

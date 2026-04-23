@@ -1,9 +1,9 @@
 services:
   db:
     image: postgres:15-alpine
-    container_name: inventory_db_v2
+    container_name: inventory_pronto_db
     volumes:
-      - postgres_data_v2:/var/lib/postgresql/data
+      - inventory_pronto_db_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -14,12 +14,12 @@ services:
 
   backend:
     build: ./backend
-    container_name: inventory_backend_v2
+    container_name: inventory_pronto_backend
     volumes:
       - ./backend:/app/backend
-      - uploads_data_v2:/app/uploads
+      - inventory_pronto_uploads:/app/uploads
     ports:
-      - "8002:8000"
+      - "${BACKEND_PORT:-8002}:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - SECRET_KEY=${SECRET_KEY}
@@ -35,12 +35,12 @@ services:
       context: ./frontend
       # Pass VITE_API_URL as a build arg if needed, OR relies on runtime injection
       # Since we are using a dev/runtime approach with start_lan.sh, we pass it as ENV
-    container_name: inventory_frontend_v2
+    container_name: inventory_pronto_frontend
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "5174:5173"
+      - "${FRONTEND_PORT:-5174}:5173"
     environment:
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8002}
     depends_on:
@@ -48,5 +48,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data_v2:
-  uploads_data_v2:
+  inventory_pronto_db_data:
+  inventory_pronto_uploads:
